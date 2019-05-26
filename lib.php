@@ -47,8 +47,13 @@ function stampcoll_supports($feature) {
             return true;
         case FEATURE_GROUPS:
             return true;
+
+        // @mfernandriu modifications
         case FEATURE_GRADE_HAS_GRADE:
-            return false;
+            return true;
+        case FEATURE_COMPLETION_HAS_RULES:
+            return true;
+
         case FEATURE_BACKUP_MOODLE2:
             return true;
         default:
@@ -112,6 +117,17 @@ function stampcoll_update_instance(stdClass $stampcoll) {
     }
 
     $DB->update_record('stampcoll', $stampcoll);
+
+    // @mfernandriu modifications
+    stampcoll_update_instance_grades($stampcoll);
+
+    //update completion state
+    $course     = $DB->get_record('course', array('id' => $stampcoll->course), '*', MUST_EXIST);
+    $cm         = get_coursemodule_from_instance('stampcoll', $stampcoll->id, $course->id, false, MUST_EXIST);
+    $completion = new completion_info($course);
+    if($completion->is_enabled($cm) && $stampcoll->completionstamps) {
+        $completion->update_state($cm,COMPLETION_UNKNOWN);
+    }
 
     return true;
 }
@@ -498,4 +514,151 @@ function stampcoll_extend_settings_navigation(settings_navigation $settingsnav, 
         $url = new moodle_url('/mod/stampcoll/managestamps.php', array('cmid' => $PAGE->cm->id));
         $stampcollnode->add(get_string('managestamps', 'mod_stampcoll'), $url, settings_navigation::TYPE_SETTING);
     }
+}
+
+// @mfernandriu modifications
+
+/*
+ * Obtain grades from plugin's database tab
+ *
+ * @param stdClass $moodleoverlfow stampcoll object
+ * @param int $userid userid
+ *
+ * @return array array of grades
+ */
+function stampcoll_get_user_grades($stampcoll, $userid=0){
+    global $CFG, $DB;
+
+    $params = array("stampcollid" => $stampcoll->id, "userid" => $userid);
+
+    if ($userid) {
+        $and = ' AND u.id = :userid ';
+    } else {
+        $and = ' AND u.id != :userid ';
+    }
+
+    $sql = "SELECT u.id AS userid, g.grade AS rawgrade
+            FROM {user} u, {stampcoll_grades} g
+            WHERE u.id = g.userid AND g.stampcollid = :stampcollid" . $and;
+
+    return $DB->get_records_sql($sql, $params);
+}
+
+/**
+ * Update grades
+ *
+ * @param stdClass $stampcoll stampcoll object
+ * @param int $userid userid
+ * @param bool $nullifnone
+ *
+ */
+function stampcoll_update_grades($stampcoll, $userid, $nullifnone = null){
+    global $CFG;
+    require_once($CFG->libdir.'/gradelib.php');
+
+    // try to get the grades to update
+    if ($grades = stampcoll_get_user_grades($stampcoll, $userid)) {
+
+        stampcoll_grade_item_update($stampcoll, $grades);
+
+    } else if ($userid and $nullifnone){
+
+        // insert a grade with rawgrade = null. As described in Gradebook API
+        $grade = new stdClass();
+        $grade->userid = $userid;
+        $grade->rawgrade = null;
+        stampcoll_grade_item_update($stampcoll, $grade);
+
+    } else {
+
+        stampcoll_grade_item_update($stampcoll);
+    }
+
+}
+
+/**
+ * Update plugin's grade item
+ *
+ * @param stdClass $stampcoll stampcoll object
+ * @param array $grades array of grades
+ *
+ * @return int grade_update function success code
+ */
+function stampcoll_grade_item_update($stampcoll, $grades=null){
+    global $CFG;
+    global $DB;
+
+    if (!function_exists('grade_update')) { //workaround for buggy PHP versions
+        require_once($CFG->libdir.'/gradelib.php');
+    }
+
+    $params = array('itemname'=>$stampcoll->name, 'idnumber'=>$stampcoll->id);
+
+    if ($stampcoll->grademaxgrade <= 0) {
+        $params['gradetype'] = GRADE_TYPE_NONE;
+
+    } else if ($stampcoll->grademaxgrade > 0) {
+        $params['gradetype'] = GRADE_TYPE_VALUE;
+        $params['grademax']  = $stampcoll->grademaxgrade;
+        $params['grademin']  = 0;
+    }
+
+    if ($grades  === 'reset') {
+        $params['reset'] = true;
+        $grades = NULL;
+    }
+
+    $grade_update = grade_update('mod/stampcoll', $stampcoll->course->id, 'mod', 'stampcoll', $stampcoll->id, 0, $grades, $params);
+
+    //modify grade item category id
+    $params = ['itemname'=>$stampcoll->name, 'idnumber'=>$stampcoll->id];
+    $DB->set_field('grade_items', 'categoryid', $stampcoll->gradecat, $params);
+
+    return  $grade_update;
+}
+
+/**
+ * Obtains the automatic completion state for this stampcoll based on any conditions
+ * in stampcoll settings.
+ *
+ * @global object
+ * @global object
+ * @param object $course Course
+ * @param object $cm Course-module
+ * @param int $userid User ID
+ * @param bool $type Type of comparison (or/and; can be used as return value if no conditions)
+ * @return bool True if completed, false if not. (If no conditions, then return
+ *   value depends on comparison type)
+ */
+function stampcoll_get_completion_state($course,$cm,$userid,$type) {
+    global $CFG,$DB;
+
+    // Get stampcoll details
+    if (!($stampcoll=$DB->get_record('stampcoll',array('id'=>$cm->instance)))) {
+        throw new Exception("Can't find stampcoll {$cm->instance}");
+    }
+
+    $result=$type; // Default return value
+
+    $postcountparams=array('userid'=>$userid,'stampcollid'=>$stampcoll->id);
+    $postcountsql="
+    SELECT
+        COUNT(1)
+    FROM
+        {stampcoll_posts} fp
+        INNER JOIN {stampcoll_discussions} fd ON fp.discussion=fd.id
+    WHERE
+        fp.userid=:userid AND fd.stampcoll=:stampcollid";
+
+    if ($stampcoll->completionstamps) {
+        $value = $stampcoll->completionstamps <=
+                 $DB->count_records('stampcoll_stamps',array('stampcollid'=>$stampcoll->id,'userid'=>$userid));
+        if ($type == COMPLETION_AND) {
+            $result = $result && $value;
+        } else {
+            $result = $result || $value;
+        }
+    }
+
+    return $result;
 }

@@ -14,6 +14,10 @@
         <FIELD NAME="image" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" PREVIOUS="introformat" NEXT="timemodified"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="image" NEXT="displayzero"/>
         <FIELD NAME="displayzero" TYPE="int" LENGTH="2" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" COMMENT="If displayzero, then display users with no stamps collected, too." PREVIOUS="timemodified"/>
+        <FIELD NAME="grademaxgrade" TYPE="float" NOTNULL="false" SEQUENCE="false" COMMENT="@mfernadriu modifications"/>
+        <FIELD NAME="pointsperstamp" TYPE="float" NOTNULL="false" SEQUENCE="false" COMMENT="@mfernandriu modifications"/>
+        <FIELD NAME="gradecat" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="@mfernandriu modifications"/>
+        <FIELD NAME="completionstamps" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="@mfernandriu"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id" COMMENT="Primary key for stampcoll"/>
@@ -39,6 +43,17 @@
         <KEY NAME="fk_userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id" PREVIOUS="fk_stampcollid" NEXT="fk_giver"/>
         <KEY NAME="fk_giver" TYPE="foreign" FIELDS="giver" REFTABLE="user" REFFIELDS="id" PREVIOUS="fk_userid" NEXT="fk_modifier"/>
         <KEY NAME="fk_modifier" TYPE="foreign" FIELDS="modifier" REFTABLE="user" REFFIELDS="id" PREVIOUS="fk_giver"/>
+      </KEYS>
+    </TABLE>
+      <TABLE NAME="stampcoll_grades" COMMENT="@mfernandriu modifications">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="stampcollid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="grade" TYPE="float" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
       </KEYS>
     </TABLE>
   </TABLES>

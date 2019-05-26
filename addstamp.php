@@ -63,6 +63,15 @@ if ($data = $form->get_data()) {
         'text'          => $data->text,
         'timecreated'   => time()));
 
+    // @mfernandriu modifications
+    stampcoll_update_user_grade($stampcoll, $data->userto);
+    // Update completion state
+    $completion = new completion_info($course);
+    if($completion->is_enabled($cm) && $stampcoll->completionstamps) {
+        $completion->update_state($cm,COMPLETION_COMPLETE, $data->userto); //do i need to indicate the user?
+    }
+
+
     $event = \mod_stampcoll\event\stamp_added::create(array(
         'objectid' => $stampid,
         'context' => $stampcoll->context,

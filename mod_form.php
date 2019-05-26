@@ -72,6 +72,28 @@ class mod_stampcoll_mod_form extends moodleform_mod {
         // Common module settings.
         $this->standard_coursemodule_elements();
 
+
+        // @mfernandriu modifications
+        // Grade options
+        $mform->addElement('header', 'gradeheading', get_string('grade'));
+
+        $mform->addElement('text', 'grademaxgrade', get_string('modgrademaxgrade', 'grades'));
+        $mform->addRule('grademaxgrade', get_string('grademaxgradeerror', 'stampcoll'), 'regex', '/^(0*[1-9][0-9]*(\.[0-9]+)?|0+\.[0-9]*[1-9][0-9]*)$/', 'client');
+
+        $mform->addElement('text', 'pointsperstamp', get_string('pointsperstamp', 'stampcoll'));
+        $mform->addHelpButton('pointsperstamp', 'pointsperstamp', 'stampcoll');
+        $mform->addRule('pointsperstamp', get_string('pointsperstamperror', 'stampcoll'), 'regex', '/^(0*[1-9][0-9]*(\.[0-9]+)?|0+\.[0-9]*[1-9][0-9]*)$/', 'client');
+
+        if ($this->_features->gradecat) {
+            $mform->addElement(
+                'select', 'gradecat',
+                get_string('gradecategoryonmodform', 'grades'),
+                grade_get_categories_menu($COURSE->id, $this->_outcomesused)
+            );
+            $mform->addHelpButton('gradecat', 'gradecategoryonmodform', 'grades');
+        }
+
+
         // Buttons.
         $this->add_action_buttons();
     }
@@ -96,5 +118,66 @@ class mod_stampcoll_mod_form extends moodleform_mod {
             file_prepare_draft_area($draftitemid, $this->context->id, 'mod_stampcoll', 'image', 0, $options);
             $defaultvalues['image'] = $draftitemid;
         }
+
+
+        //@mfernandriu modifictations
+        // Set up the completion checkboxes which aren't part of standard data.
+        // We also make the default value (if you turn on the checkbox) for those
+        // numbers to be 1, this will not apply unless checkbox is ticked.
+        $default_values['completionstampsenabled']=
+            !empty($default_values['completionstamps']) ? 1 : 0;
+        if(empty($default_values['completionstamps'])) {
+            $default_values['completionstamps']=1;
+        }
+    }
+
+
+    // @mfernandriu modifications
+    /**
+    * Add elements for setting the custom completion rules.
+    *
+    * @category completion
+    * @return array List of added element names, or names of wrapping group elements.
+    */
+    public function add_completion_rules() {
+
+    $mform = $this->_form;
+
+        $group = [
+            $mform->createElement('checkbox', 'completionstampsenabled', ' ', get_string('completionstamps', 'moodleoverflow')),
+            $mform->createElement('text', 'completionstamps', ' ', ['size' => 3]),
+        ];
+        $mform->setType('completionstamps', PARAM_INT);
+        $mform->addGroup($group, 'completionstampsgroup', get_string('completionstampsgroup','moodleoverflow'), [' '], false);
+        $mform->addHelpButton('completionstampsgroup', 'completionstamps', 'moodleoverflow');
+        $mform->disabledIf('completionstamps', 'completionstampsenabled', 'notchecked');
+
+        return ['completionstampsgroup'];
+    }
+
+    /**
+     * Called during validation to see whether some module-specific completion rules are selected.
+     *
+     * @param array $data Input data not yet validated.
+     * @return bool True if one or more rules is enabled, false if none are.
+     */
+    public function completion_rule_enabled($data) {
+        return (!empty($data['completionstampsenabled']) && $data['completionstamps'] != 0);
+    }
+
+
+    function get_data() {
+        $data = parent::get_data();
+        if (!$data) {
+            return $data;
+        }
+        if (!empty($data->completionunlocked)) {
+            // Turn off completion settings if the checkboxes aren't ticked
+            $autocompletion = !empty($data->completion) && $data->completion==COMPLETION_TRACKING_AUTOMATIC;
+            if (empty($data->completionstampsenabled) || !$autocompletion) {
+               $data->completionstamps = 0;
+            }
+        }
+        return $data;
     }
 }

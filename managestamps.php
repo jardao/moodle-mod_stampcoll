@@ -112,6 +112,16 @@ if ($delete) {
         $event->trigger();
 
         $DB->delete_records('stampcoll_stamps', array('id' => $stamp->id));
+
+        // @mfernandriu modifications
+        stampcoll_update_user_grade($stampcoll, $stamp->holderid, $mode=2);
+        // Update completion state
+        $completion = new completion_info($course);
+        if($completion->is_enabled($cm) && $stampcoll->completionstamps) {
+            $completion->update_state($cm,COMPLETION_INCOMPLETE, $data->userto);
+        }
+
+
         redirect($PAGE->url);
     }
 }
@@ -151,6 +161,15 @@ if ($data = data_submitted()) {
                 'text'          => $text,
                 'timecreated'   => $now),
             true, true);
+
+            // @mfernandriu modifications
+            stampcoll_update_user_grade($stampcoll, $holderid);
+            // Update completion state
+            $completion = new completion_info($course);
+            if($completion->is_enabled($cm) && $stampcoll->completionstamps) {
+                $completion->update_state($cm,COMPLETION_COMPLETE, $data->userto);
+            }
+
 
             $event = \mod_stampcoll\event\stamp_added::create(array(
                 'objectid' => $stampid,

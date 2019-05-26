@@ -66,6 +66,15 @@ class stampcoll {
     /** @var bool should the users without any stamp be listed, too */
     public $displayzero;
 
+    // @mfernandriu modifications
+    public $grademaxgrade;
+
+    public $pointsperstamp;
+
+    public $gradecat;
+
+    public $completionstamps;
+
     /**
      * Initializes the stampcoll API instance using the data from DB
      *
@@ -381,4 +390,96 @@ class stampcoll_multiuser_collection extends stampcoll_collection implements ren
  * Collection of multiple users' stamps used at the managestamps.php screen
  */
 class stampcoll_management_collection extends stampcoll_multiuser_collection implements renderable {
+}
+
+// @mfernandriu modifications
+function stampcoll_update_user_grade($stampcoll,$userid,$mode = 1){
+    global $DB;
+
+    // check whether stampcoll object is gradeable
+    if($stampcoll->grademaxgrade > 0 and $stampcoll->pointsperstamp > 0){
+
+        //does the user have a grade?
+        $params = ['stampcollid' => $stampcoll->id, 'userid' => $userid];
+        $sql = 'SELECT g.grade AS grade
+        FROM {stampcoll_grades} AS g
+        WHERE g.stampcollid = :stampcollid AND g.userid = :userid';
+
+        if($DB->record_exists_sql($sql, $params)){
+
+            $grade = $DB->get_field_sql($sql, $params, IGNORE_MISSING);
+
+            if($mode == 1){
+
+                $grade += $stampcoll->pointsperstamp;
+
+                if($grade > $stampcoll->grademaxgrade){
+
+                    $grade = $stampcoll->grademaxgrade;
+                }
+            }
+            elseif($mode == 2){
+
+                $grade -= $stampcoll->pointsperstamp;
+
+                if($grade < 0){
+
+                    $grade = 0;
+                }
+            }
+            elseif($mode == 3){
+
+                $params = ['stampcollid' => $stampcoll->id, 'userid' => $userid];
+                $sql = 'SELECT COUNT(s.id)
+                FROM {stampcoll_stamps} AS s
+                WHERE s.stampcollid = :stampcollid AND s.userid = :userid';
+                $stampscount = $DB->count_records_sql($sql, $params);
+
+                $grade = $stampcoll->pointsperstamp * $stampscount;
+
+                if($grade > $stampcoll->grademaxgrade){
+
+                    $grade = $stampcoll->grademaxgrade;
+                }
+            }
+            else{
+
+                debugging('Invalid mode');
+            }
+
+            $DB->set_field('stampcoll_grades', 'grade', $grade, $params);
+        }
+        else{
+
+            $grade_dataobject = new stdClass();
+            $grade_dataobject->stampcollid = $stampcoll->id;
+            $grade_dataobject->userid = $userid;
+            $grade_dataobject->grade = $stampcoll->pointsperstamp;
+            $DB->insert_record('stampcoll_grades', $grade_dataobject, false);
+        }
+
+        //update gradebook
+        stampcoll_update_grades($stampcoll, $userid);
+    }
+}
+
+function stampcoll_update_instance_grades($stampcoll){
+    global $DB;
+
+    // check whether stampcoll object is gradeable
+    if($stampcoll->grademaxgrade > 0 and $stampcoll->pointsperstamp > 0){
+
+        // get all users id
+        $params = ['stampcollid' => $stampcoll->id];
+        $sql = 'SELECT DISTINCT s.userid
+                FROM {stampcoll_stamps} AS s
+                WHERE s.stampcollid = :stampcollid';
+        $userids = $DB->get_fieldset_sql($sql, $params);
+
+        // iterate all users
+        foreach ($userids as $userid) {
+
+            stampcoll_update_user_grade($stampcoll, $userid, $mode=3);
+        }
+    }
 }
