@@ -91,4 +91,5 @@ $string['pointsperstamp_help'] = 'Each stamp acquire by the student will earn hi
 $string['pointsperstamperror'] = 'The points per stamp value should be a number greater than 0';
 $string['completionstamps'] = 'Students must recive this many stamps';
 $string['completionstamps_help'] = 'If the student obtains the given quantity of stamps it will complete the activity. This option should not go with require grade.';
-$string['completionstampsgroup'] = 'Require Stamps';
+$string['completionstampsgroup'] = 'Required stamps';
+$string['grademaxgradeerror'] = 'Points per stamp must be a positive number';

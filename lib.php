@@ -28,6 +28,8 @@
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot.'/repository/lib.php');
+require_once(dirname(__FILE__) . '/locallib.php');
+
 
 // Moodle core API.
 
@@ -608,7 +610,10 @@ function stampcoll_grade_item_update($stampcoll, $grades=null){
         $grades = NULL;
     }
 
-    $grade_update = grade_update('mod/stampcoll', $stampcoll->course->id, 'mod', 'stampcoll', $stampcoll->id, 0, $grades, $params);
+    if( !is_null($stampcoll->gradecat) && $stampcoll->gradecat > 0){
+
+        $grade_update = grade_update('mod/stampcoll', $stampcoll->course->id, 'mod', 'stampcoll', $stampcoll->id, 0, $grades, $params);
+    }
 
     //modify grade item category id
     $params = ['itemname'=>$stampcoll->name, 'idnumber'=>$stampcoll->id];

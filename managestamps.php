@@ -114,7 +114,7 @@ if ($delete) {
         $DB->delete_records('stampcoll_stamps', array('id' => $stamp->id));
 
         // @mfernandriu modifications
-        stampcoll_update_user_grade($stampcoll, $stamp->holderid, $mode=2);
+        stampcoll_update_user_grade($stampcoll, $stamp->holderid);
         // Update completion state
         $completion = new completion_info($course);
         if($completion->is_enabled($cm) && $stampcoll->completionstamps) {

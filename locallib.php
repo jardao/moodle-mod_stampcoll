@@ -393,7 +393,7 @@ class stampcoll_management_collection extends stampcoll_multiuser_collection imp
 }
 
 // @mfernandriu modifications
-function stampcoll_update_user_grade($stampcoll,$userid,$mode = 1){
+function stampcoll_update_user_grade($stampcoll,$userid){
     global $DB;
 
     // check whether stampcoll object is gradeable
@@ -407,44 +407,17 @@ function stampcoll_update_user_grade($stampcoll,$userid,$mode = 1){
 
         if($DB->record_exists_sql($sql, $params)){
 
-            $grade = $DB->get_field_sql($sql, $params, IGNORE_MISSING);
+            $params = ['stampcollid' => $stampcoll->id, 'userid' => $userid];
+            $sql = 'SELECT COUNT(s.id)
+            FROM {stampcoll_stamps} AS s
+            WHERE s.stampcollid = :stampcollid AND s.userid = :userid';
+            $stampscount = $DB->count_records_sql($sql, $params);
 
-            if($mode == 1){
+            $grade = $stampcoll->pointsperstamp * $stampscount;
 
-                $grade += $stampcoll->pointsperstamp;
+            if($grade > $stampcoll->grademaxgrade){
 
-                if($grade > $stampcoll->grademaxgrade){
-
-                    $grade = $stampcoll->grademaxgrade;
-                }
-            }
-            elseif($mode == 2){
-
-                $grade -= $stampcoll->pointsperstamp;
-
-                if($grade < 0){
-
-                    $grade = 0;
-                }
-            }
-            elseif($mode == 3){
-
-                $params = ['stampcollid' => $stampcoll->id, 'userid' => $userid];
-                $sql = 'SELECT COUNT(s.id)
-                FROM {stampcoll_stamps} AS s
-                WHERE s.stampcollid = :stampcollid AND s.userid = :userid';
-                $stampscount = $DB->count_records_sql($sql, $params);
-
-                $grade = $stampcoll->pointsperstamp * $stampscount;
-
-                if($grade > $stampcoll->grademaxgrade){
-
-                    $grade = $stampcoll->grademaxgrade;
-                }
-            }
-            else{
-
-                debugging('Invalid mode');
+                $grade = $stampcoll->grademaxgrade;
             }
 
             $DB->set_field('stampcoll_grades', 'grade', $grade, $params);

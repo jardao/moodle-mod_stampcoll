@@ -78,10 +78,12 @@ class mod_stampcoll_mod_form extends moodleform_mod {
         $mform->addElement('header', 'gradeheading', get_string('grade'));
 
         $mform->addElement('text', 'grademaxgrade', get_string('modgrademaxgrade', 'grades'));
+        $mform->setType('grademaxgrade', PARAM_FLOAT);
         $mform->addRule('grademaxgrade', get_string('grademaxgradeerror', 'stampcoll'), 'regex', '/^(0*[1-9][0-9]*(\.[0-9]+)?|0+\.[0-9]*[1-9][0-9]*)$/', 'client');
 
         $mform->addElement('text', 'pointsperstamp', get_string('pointsperstamp', 'stampcoll'));
         $mform->addHelpButton('pointsperstamp', 'pointsperstamp', 'stampcoll');
+        $mform->setType('pointsperstamp', PARAM_FLOAT);
         $mform->addRule('pointsperstamp', get_string('pointsperstamperror', 'stampcoll'), 'regex', '/^(0*[1-9][0-9]*(\.[0-9]+)?|0+\.[0-9]*[1-9][0-9]*)$/', 'client');
 
         if ($this->_features->gradecat) {
@@ -144,12 +146,12 @@ class mod_stampcoll_mod_form extends moodleform_mod {
     $mform = $this->_form;
 
         $group = [
-            $mform->createElement('checkbox', 'completionstampsenabled', ' ', get_string('completionstamps', 'moodleoverflow')),
+            $mform->createElement('checkbox', 'completionstampsenabled', ' ', get_string('completionstamps', 'stampcoll')),
             $mform->createElement('text', 'completionstamps', ' ', ['size' => 3]),
         ];
         $mform->setType('completionstamps', PARAM_INT);
-        $mform->addGroup($group, 'completionstampsgroup', get_string('completionstampsgroup','moodleoverflow'), [' '], false);
-        $mform->addHelpButton('completionstampsgroup', 'completionstamps', 'moodleoverflow');
+        $mform->addGroup($group, 'completionstampsgroup', get_string('completionstampsgroup','stampcoll'), [' '], false);
+        $mform->addHelpButton('completionstampsgroup', 'completionstamps', 'stampcoll');
         $mform->disabledIf('completionstamps', 'completionstampsenabled', 'notchecked');
 
         return ['completionstampsgroup'];
